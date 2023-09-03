@@ -1,11 +1,12 @@
-const { ObjectBase, Utils, Arrays, TextBuilder } = require("./utils")
+const { ObjectBase, Utils, Arrays } = require("./utils")
+const { TextBuilder } = require("./textbuilder")
 const { Sql, SqlTypes } = require("./sql")
 
 class SqlOperationBase extends ObjectBase {
 
     constructor(parameters) {
         super(parameters)
-        this.tableName = this.parameters.tableName;
+        this.tableName = this._parameters.tableName;
     }
 
 }
@@ -14,8 +15,8 @@ class SqlCreate extends SqlOperationBase {
 
     constructor(parameters) {
         super(parameters);
-        this.columns = this.parameters.columns;
-        this.unique = this.parameters.unique;
+        this.columns = this._parameters.columns;
+        this.unique = this._parameters.unique;
         this.addDefaults()
     }
 
@@ -62,21 +63,21 @@ class SqlCreate extends SqlOperationBase {
 
 }
 
-class SqlUpdate extends SqlOperationBase {
+class SqlUpdateBase extends SqlOperationBase {
 
     constructor(parameters) {
         super(parameters);
-        this.columns = this.parameters.columns;
+        this.columns = this._parameters.columns;
     }
 
-    sql() {
+    text() {
         const textBuilder = new TextBuilder();
         textBuilder
             .add("update table")
             .add(this.tableName)
             .add("set")
         Object.keys(this.columns).forEach((name, i) =>
-            textBuilder.add((0 < i ? "," : "") + Sql.ColumnName(name)) + "=" + Sql.Value(this.columns[name])
+            textBuilder.add((0 < i ? "," : "") + Sql.ColumnName(name) + "=" + Sql.Value(this.columns[name]))
         )
         return textBuilder
             .text();
@@ -84,8 +85,47 @@ class SqlUpdate extends SqlOperationBase {
 
 }
 
+class SqlUpdateId extends SqlUpdateBase {
+
+    text() {
+        return new TextBuilder()
+            .add(super.text())
+            .add(this.sqlWhere())
+            .text()
+    }
+
+    sqlWhere() {
+        return new SqlWhere()
+            .add("tenant=@tenant")
+            .add("id=@id")
+            .parameters({ tenant: this._parameters.tenant, id: this._parameters.id })
+    }
+
+
+}
+
 class SqlDelete {
 
 }
 
+class SqlWhere extends TextBuilder {
+
+    beforeItem(itemText, i) {
+        if (i == 0) {
+            return "where ("
+        } else {
+            return " and ";
+        }
+    }
+
+    finalText(text, itemCount) {
+        if (0 < itemCount) {
+            return text + ")";
+        }
+    }
+
+}
+
 module.exports.SqlCreate = SqlCreate;
+module.exports.SqlUpdateId = SqlUpdateId;
+module.exports.SqlWhere = SqlWhere;

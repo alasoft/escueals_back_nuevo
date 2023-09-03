@@ -1,3 +1,5 @@
+const { escape } = require("sqlutils/pg");
+
 const { Strings } = require("./utils")
 
 class Sql {
@@ -8,6 +10,10 @@ class Sql {
 
     static ColumnName(name) {
         return Strings.DoubleQuotes(name)
+    }
+
+    static Value(x) {
+        return escape(x);
     }
 
 }
@@ -55,7 +61,6 @@ class SqlTypes {
     }
 
 }
-
 
 module.exports.Sql = Sql;
 module.exports.SqlTypes = SqlTypes;
