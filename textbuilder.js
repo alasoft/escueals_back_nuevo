@@ -1,21 +1,33 @@
-const { Utils, Arrays, ObjectBase } = require("./utils")
-const { Sql } = require("./sql")
+const { Utils, ObjectBase } = require("./utils")
+const { Exceptions } = require("./exceptions")
 
 class TextBuilder extends ObjectBase {
 
     constructor(parameters) {
         super(parameters)
-        this.items = Arrays.ToArray(this._parameters.items);
-        this.itemSeparator = this._parameters.itemSeparator || " ";
+        this.items = [];
+        this.separator = this._parameters.separator || " ";
+        if (Utils.IsDefined(this._parameters.items)) {
+            this.add(this._parameters.items)
+        }
     }
 
     add(item) {
-        this.items.push(item);
+        if (Utils.IsArray(item)) {
+            for (const element of item) {
+                this.add(element);
+            }
+        } else {
+            this.items.push(item)
+        }
         return this;
     }
 
     addIf(condition, item) {
         if (condition) {
+            if (Utils.IsArray(item)) {
+                Exceptions.CannotBeArray({ data: item })
+            }
             this.items.push(item);
         }
         return this;
@@ -26,26 +38,11 @@ class TextBuilder extends ObjectBase {
         return this;
     }
 
-    parameters(paramValues) {
-        this.paramValues = Utils.Merge(this.paramValues, paramValues);
-        return this;
-    }
-
     text() {
         let text = "";
         this.finalItems().forEach((item, i) =>
             text += this.beforeItem(item, i) + item + this.afterItem(item, i))
-        text = this.finalText(text, this.finalItems().length);
-        return this.setParamValues(text);
-    }
-
-    setParamValues(text) {
-        if (Utils.IsDefined(this.paramValues)) {
-            Object.keys(this.paramValues).forEach(name =>
-                text = text.replace(new RegExp("@" + name, "ig"), Sql.Value(this.paramValues[name]))
-            )
-        }
-        return text;
+        return this.finalText(text, this.finalItems().length);
     }
 
     finalItems() {
@@ -64,12 +61,14 @@ class TextBuilder extends ObjectBase {
     }
 
     itemToText(item, i) {
-        if (item instanceof TextBuilder) {
-            return item.text();
-        } else if (Utils.IsFunction(item)) {
-            return this.itemToText(item(i))
-        } else if (Utils.IsDefined(item)) {
-            return item.toString()
+        if (Utils.IsDefined(item)) {
+            if (Utils.IsObject(item)) {
+                return item.text()
+            } else if (Utils.IsFunction(item)) {
+                return this.itemToText(item(i))
+            } else {
+                return item.toString();
+            }
         }
     }
 
@@ -77,7 +76,7 @@ class TextBuilder extends ObjectBase {
         if (i == 0) {
             return ""
         } else {
-            return this.itemSeparator;
+            return this.separator;
         }
     }
 

@@ -1,0 +1,11 @@
+{
+    "TenantNoDefined": {
+        "side": "server",
+        "code": 1, 
+        "message": "Tenant not defined"
+    },
+
+    "IdNotDefined": {
+
+    }
+}
